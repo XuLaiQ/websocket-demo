@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>WebSocket 定时推送演示</title>
+    <script src="./jquery-3.7.1.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .message-area { height: 300px; overflow-y: auto; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9; }
+        input[type="text"] { width: 300px; padding: 5px; margin: 5px; }
+        button { padding: 8px 15px; margin: 5px; background-color: #007bff; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        button:hover { background-color: #0056b3; }
+        .status { color: #28a745; font-weight: bold; }
+        .error { color: #dc3545; font-weight: bold; }
+    </style>
+    <script>
+        //获取浏览器地址栏 get 请求参数
+        function GetQueryString(name) {
+            var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)");
+            var r = window.location.search.substr(1).match(reg);
+            if (r != null) return unescape(r[2]);
+            return null;
+        }
+
+        var socket;
+        if (typeof (WebSocket) == "undefined") {
+            console.log("您的浏览器不支持WebSocket");
+        } else {
+            var host = window.location.host;
+            var username = GetQueryString("username");
+            //实现化 WebSocket 对象，与服务器建立连接
+            socket = new WebSocket("ws://" + host + "/socket/" + username);
+            //打开事件
+            socket.onopen = function () {
+                console.log("Socket 已连接");
+            };
+            //获得消息事件
+            socket.onmessage = function (msg) {
+                console.log(msg.data);
+                var timestamp = new Date().toLocaleTimeString();
+                $("#msg").append("<div><span style='color: #666;'>[" + timestamp + "]</span> 接收到消息：" + msg.data + "</div>");
+                // 自动滚动到底部
+                var messageArea = document.getElementById('msg');
+                messageArea.scrollTop = messageArea.scrollHeight;
+            };
+            //关闭事件
+            socket.onclose = function () {
+                console.log("Socket已关闭");
+            };
+            //发生了错误事件
+            socket.onerror = function () {
+                alert("Socket发生了错误");
+            }
+
+            //关闭连接
+            function closeWebSocket() {
+                socket.close();
+            }
+
+            //发送消息
+            function send() {
+                var message = $('#text').val();
+                if (message.trim()) {
+                    socket.send(message);
+                    $('#text').val('');
+                }
+            }
+
+            // 手动触发定时推送
+            function triggerScheduled() {
+                $.post('/test/triggerScheduled', function(data) {
+                    alert(data);
+                }).fail(function() {
+                    alert('触发失败，请检查服务器连接');
+                });
+            }
+
+            // 发送自定义定时消息
+            function sendCustomMessage() {
+                var message = $('#customMessage').val();
+                if (message.trim()) {
+                    $.post('/test/sendScheduledMessage', {
+                        message: message,
+                        type: 'MANUAL'
+                    }, function(data) {
+                        alert(data);
+                    }).fail(function() {
+                        alert('发送失败，请检查服务器连接');
+                    });
+                } else {
+                    alert('请输入消息内容');
+                }
+            }
+
+            // 获取在线用户信息
+            function getOnlineUsers() {
+                $.get('/test/onlineUsers', function(data) {
+                    var info = '当前时间：' + data.currentTime + '\n';
+                    info += '在线用户数：' + data.count + '\n';
+                    info += '在线用户：' + (data.users.length > 0 ? data.users.join(', ') : '无');
+                    alert(info);
+                }).fail(function() {
+                    alert('获取在线用户信息失败');
+                });
+            }
+
+            // 回车发送消息
+            $(document).ready(function() {
+                $('#text').keypress(function(e) {
+                    if (e.which == 13) {
+                        send();
+                    }
+                });
+                $('#customMessage').keypress(function(e) {
+                    if (e.which == 13) {
+                        sendCustomMessage();
+                    }
+                });
+            });
+        }
+    </script>
+</head>
+<body>
+<div class="container">
+    <h1>WebSocket 定时推送演示</h1>
+    
+    <div class="section">
+        <h3>消息接收区域</h3>
+        <div id="msg" class="message-area"></div>
+    </div>
+
+    <div class="section">
+        <h3>发送消息测试</h3>
+        <input id="text" type="text" placeholder="输入消息内容，按回车发送"/>
+        <button type="button" onclick="send()">发送消息</button>
+    </div>
+
+    <div class="section">
+        <h3>定时推送功能</h3>
+        <p><strong>自动定时推送：</strong></p>
+        <ul>
+            <li>每30秒自动推送一次时间信息</li>
+            <li>每天上午9点推送早安消息</li>
+            <li>每天下午6点推送下班提醒</li>
+        </ul>
+        
+        <p><strong>手动操作：</strong></p>
+        <button type="button" onclick="triggerScheduled()">立即触发定时推送</button>
+        <button type="button" onclick="getOnlineUsers()">查看在线用户</button>
+        
+        <br><br>
+        <input id="customMessage" type="text" placeholder="输入自定义定时消息内容"/>
+        <button type="button" onclick="sendCustomMessage()">发送自定义定时消息</button>
+    </div>
+
+    <div class="section">
+        <h3>使用说明</h3>
+        <p>1. 在URL中添加用户名参数，例如：<code>?username=张三</code></p>
+        <p>2. 页面会自动连接到WebSocket服务器</p>
+        <p>3. 定时推送功能会自动运行，无需手动操作</p>
+        <p>4. 可以手动触发推送或发送自定义消息进行测试</p>
+    </div>
+</div>
+</body>
+</html>
