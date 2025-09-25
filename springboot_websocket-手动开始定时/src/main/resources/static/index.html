@@ -106,6 +106,105 @@
                 });
             }
 
+            // 手动启动定时任务（全局）
+            function startScheduledTask() {
+                $.post('/test/startScheduledTask', function(data) {
+                    alert(data);
+                    updateTaskStatus();
+                }).fail(function() {
+                    alert('启动定时任务失败，请检查服务器连接');
+                });
+            }
+
+            // 手动停止定时任务（全局）
+            function stopScheduledTask() {
+                $.post('/test/stopScheduledTask', function(data) {
+                    alert(data);
+                    updateTaskStatus();
+                }).fail(function() {
+                    alert('停止定时任务失败，请检查服务器连接');
+                });
+            }
+
+            // 启动当前用户的定时任务
+            function startUserScheduledTask() {
+                if (!username) {
+                    alert('无法获取用户名，请确保URL中包含username参数');
+                    return;
+                }
+                $.post('/test/startUserScheduledTask', {username: username}, function(data) {
+                    alert(data);
+                    updateUserTaskStatus();
+                }).fail(function() {
+                    alert('启动用户定时任务失败，请检查服务器连接');
+                });
+            }
+
+            // 停止当前用户的定时任务
+            function stopUserScheduledTask() {
+                if (!username) {
+                    alert('无法获取用户名，请确保URL中包含username参数');
+                    return;
+                }
+                $.post('/test/stopUserScheduledTask', {username: username}, function(data) {
+                    alert(data);
+                    updateUserTaskStatus();
+                }).fail(function() {
+                    alert('停止用户定时任务失败，请检查服务器连接');
+                });
+            }
+
+            // 获取定时任务状态
+            function getTaskStatus() {
+                $.get('/test/scheduledTaskStatus', function(data) {
+                    var info = '当前时间：' + data.currentTime + '\n';
+                    info += '在线用户数：' + data.onlineCount + '\n';
+                    info += '在线用户：' + (data.onlineUsers.length > 0 ? data.onlineUsers.join(', ') : '无') + '\n';
+                    info += '状态信息：' + data.message;
+                    alert(info);
+                }).fail(function() {
+                    alert('获取定时任务状态失败');
+                });
+            }
+
+            // 更新任务状态显示
+            function updateTaskStatus() {
+                $.get('/test/scheduledTaskStatus', function(data) {
+                    $('#taskStatus').html(
+                        '<strong>全局定时任务状态：</strong><br>' +
+                        '在线用户数：' + data.onlineCount + '<br>' +
+                        '在线用户：' + (data.onlineUsers.length > 0 ? data.onlineUsers.join(', ') : '无') + '<br>' +
+                        '状态：' + data.message
+                    );
+                }).fail(function() {
+                    $('#taskStatus').html('<span class="error">获取状态失败</span>');
+                });
+            }
+
+            // 更新用户级定时任务状态显示
+            function updateUserTaskStatus() {
+                if (!username) {
+                    $('#userTaskStatus').html('<span class="error">无法获取用户名</span>');
+                    return;
+                }
+                $.get('/test/userScheduledTaskStatus', {username: username}, function(data) {
+                    if (data.error) {
+                        $('#userTaskStatus').html('<span class="error">' + data.error + '</span>');
+                        return;
+                    }
+                    $('#userTaskStatus').html(
+                        '<strong>用户定时任务状态：</strong><br>' +
+                        '当前用户：' + username + '<br>' +
+                        '用户定时任务：' + (data.userScheduledStatus ? '<span class="status">已启用</span>' : '<span class="error">已停用</span>') + '<br>' +
+                        '启用定时任务的用户数：' + data.scheduledUserCount + '<br>' +
+                        '启用定时任务的用户：' + (data.scheduledUsers.length > 0 ? data.scheduledUsers.join(', ') : '无') + '<br>' +
+                        '当前时间：' + data.currentTime
+                    );
+                }).fail(function() {
+                    $('#userTaskStatus').html('<span class="error">获取用户状态失败</span>');
+                });
+            }
+
             // 回车发送消息
             $(document).ready(function() {
                 $('#text').keypress(function(e) {
@@ -118,6 +217,10 @@
                         sendCustomMessage();
                     }
                 });
+                
+                // 页面加载时自动更新任务状态
+                updateTaskStatus();
+                updateUserTaskStatus();
             });
         }
     </script>
@@ -151,6 +254,29 @@
         <button type="button" onclick="getOnlineUsers()">查看在线用户</button>
         
         <br><br>
+        <p><strong>全局定时任务控制：</strong></p>
+        <button type="button" onclick="startScheduledTask()" style="background-color: #28a745;">启动全局定时任务</button>
+        <button type="button" onclick="stopScheduledTask()" style="background-color: #dc3545;">停止全局定时任务</button>
+        <button type="button" onclick="getTaskStatus()">查看全局状态</button>
+        
+        <br><br>
+        <div id="taskStatus" class="status" style="padding: 10px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 3px; margin: 10px 0;">
+            <strong>全局定时任务状态：</strong><br>
+            点击"查看全局状态"按钮获取最新状态信息
+        </div>
+        
+        <br><br>
+        <p><strong>用户级定时任务控制：</strong></p>
+        <button type="button" onclick="startUserScheduledTask()" style="background-color: #17a2b8;">启动我的定时任务</button>
+        <button type="button" onclick="stopUserScheduledTask()" style="background-color: #ffc107; color: #000;">停止我的定时任务</button>
+        
+        <br><br>
+        <div id="userTaskStatus" class="status" style="padding: 10px; background-color: #e7f3ff; border: 1px solid #b3d9ff; border-radius: 3px; margin: 10px 0;">
+            <strong>用户定时任务状态：</strong><br>
+            页面加载时自动更新状态信息
+        </div>
+        
+        <br>
         <input id="customMessage" type="text" placeholder="输入自定义定时消息内容"/>
         <button type="button" onclick="sendCustomMessage()">发送自定义定时消息</button>
     </div>
@@ -161,6 +287,19 @@
         <p>2. 页面会自动连接到WebSocket服务器</p>
         <p>3. 定时推送功能会自动运行，无需手动操作</p>
         <p>4. 可以手动触发推送或发送自定义消息进行测试</p>
+        <p>5. <strong>定时任务控制功能：</strong></p>
+        <ul>
+            <li><strong>全局定时任务：</strong>控制所有用户的定时推送功能</li>
+            <li><strong>用户级定时任务：</strong>每个用户可以独立控制自己的定时推送</li>
+            <li><strong>智能管理：</strong>当有用户启用定时任务时自动启动全局定时器，无用户启用时自动停止</li>
+            <li><strong>状态监控：</strong>实时显示全局和用户级定时任务状态</li>
+        </ul>
+        <p><strong>使用建议：</strong></p>
+        <ul>
+            <li>普通用户建议使用"用户级定时任务控制"来管理自己的定时推送</li>
+            <li>管理员可以使用"全局定时任务控制"来管理整个系统的定时推送</li>
+            <li>系统会自动根据用户启用情况管理全局定时器，无需手动干预</li>
+        </ul>
     </div>
 </div>
 </body>

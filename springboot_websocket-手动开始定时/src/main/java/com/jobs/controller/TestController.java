@@ -108,4 +108,59 @@ public class TestController {
         
         return new ScheduledTaskStatusDTO(onlineCount, onlineUsers, currentTime, message);
     }
+    
+    // 用户级定时任务管理API
+    
+    /**
+     * 启动当前用户的定时任务
+     */
+    @PostMapping("/startUserScheduledTask")
+    public String startUserScheduledTask(@RequestParam String username) {
+        try {
+            scheduledMessageService.startUserScheduledTask(username);
+            return "用户 " + username + " 的定时任务已启动";
+        } catch (Exception e) {
+            return "启动用户定时任务失败：" + e.getMessage();
+        }
+    }
+    
+    /**
+     * 停止当前用户的定时任务
+     */
+    @PostMapping("/stopUserScheduledTask")
+    public String stopUserScheduledTask(@RequestParam String username) {
+        try {
+            scheduledMessageService.stopUserScheduledTask(username);
+            return "用户 " + username + " 的定时任务已停止";
+        } catch (Exception e) {
+            return "停止用户定时任务失败：" + e.getMessage();
+        }
+    }
+    
+    /**
+     * 获取当前用户的定时任务状态
+     */
+    @GetMapping("/userScheduledTaskStatus")
+    public Object getUserScheduledTaskStatus(@RequestParam String username) {
+        try {
+            return scheduledMessageService.getUserScheduledTaskInfo(username);
+        } catch (Exception e) {
+            return new Object() {
+                public final String error = "获取用户定时任务状态失败：" + e.getMessage();
+            };
+        }
+    }
+    
+    /**
+     * 向指定用户发送定时消息
+     */
+    @PostMapping("/sendScheduledMessageToUser")
+    public String sendScheduledMessageToUser(@RequestParam String username, @RequestParam String message) {
+        try {
+            scheduledMessageService.sendScheduledMessageToUser(username, message);
+            return "定时消息已发送给用户 " + username;
+        } catch (Exception e) {
+            return "发送定时消息失败：" + e.getMessage();
+        }
+    }
 }
